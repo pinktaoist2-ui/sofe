@@ -171,7 +171,7 @@ const OrdersTab = () => {
                 <div className="w-48">
                   <Select
                     value={order.status}
-                    onValueChange={(value) => updateOrderStatus(order.id, value)}
+                    onValueChange={(value) => updateOrderStatus(order.id, value as "pending" | "processing" | "completed" | "cancelled")}
                   >
                     <SelectTrigger>
                       <SelectValue />
