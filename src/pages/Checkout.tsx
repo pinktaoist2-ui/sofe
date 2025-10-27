@@ -23,6 +23,7 @@ const Checkout = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [deliveryMethod, setDeliveryMethod] = useState("pickup");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -70,6 +71,12 @@ const Checkout = () => {
       if (!session) throw new Error("Not authenticated");
 
       const formData = new FormData(e.currentTarget);
+      const paymentMethod = formData.get("payment_method") as string;
+      const deliveryMethod = formData.get("delivery_method") as string;
+      const deliveryAddress = deliveryMethod === "delivery" 
+        ? (formData.get("address") as string)
+        : "Pick-up at store";
+      
       const totalAmount = cartItems.reduce(
         (sum, item) => sum + (item.product?.price || 0) * item.quantity,
         0
@@ -80,9 +87,11 @@ const Checkout = () => {
         .insert({
           user_id: session.user.id,
           total_amount: totalAmount,
-          delivery_address: formData.get("address") as string,
+          delivery_address: deliveryAddress,
           phone: formData.get("phone") as string,
           notes: formData.get("notes") as string,
+          payment_method: paymentMethod,
+          delivery_method: deliveryMethod,
         })
         .select()
         .single();
@@ -130,38 +139,115 @@ const Checkout = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-secondary/10 to-background">
+    <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Checkout
-        </h1>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Checkout</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Delivery Information</CardTitle>
+              <CardTitle>Order Summary</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="address">Delivery Address *</Label>
+            <CardContent className="space-y-3">
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {item.product?.name} x {item.quantity}
+                  </span>
+                  <span className="font-medium">
+                    ₱{((item.product?.price || 0) * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+              <div className="border-t pt-3 flex justify-between items-center">
+                <span className="text-lg font-semibold">Total</span>
+                <span className="text-xl font-bold text-primary">
+                  ₱{totalAmount.toFixed(2)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Method</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                <input type="radio" name="payment_method" value="gcash" required className="w-4 h-4 text-primary" />
+                <span className="font-medium">GCash</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                <input type="radio" name="payment_method" value="cash" required className="w-4 h-4 text-primary" />
+                <span className="font-medium">Cash</span>
+              </label>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Delivery Method</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                <input 
+                  type="radio" 
+                  name="delivery_method" 
+                  value="pickup" 
+                  required 
+                  className="w-4 h-4 text-primary"
+                  checked={deliveryMethod === "pickup"}
+                  onChange={(e) => setDeliveryMethod(e.target.value)}
+                />
+                <span className="font-medium">Pick-up at store</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                <input 
+                  type="radio" 
+                  name="delivery_method" 
+                  value="delivery" 
+                  required 
+                  className="w-4 h-4 text-primary"
+                  checked={deliveryMethod === "delivery"}
+                  onChange={(e) => setDeliveryMethod(e.target.value)}
+                />
+                <span className="font-medium">Delivery</span>
+              </label>
+            </CardContent>
+          </Card>
+
+          {deliveryMethod === "delivery" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery Address</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Textarea
                   id="address"
                   name="address"
-                  placeholder="Enter your full delivery address"
+                  placeholder="Enter your complete delivery address"
                   defaultValue={profile?.address || ""}
-                  required
+                  required={deliveryMethod === "delivery"}
+                  rows={3}
                 />
-              </div>
-              
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number *</Label>
                 <Input
                   id="phone"
                   name="phone"
                   type="tel"
-                  placeholder="Your contact number"
+                  placeholder="09XX XXX XXXX"
                   defaultValue={profile?.phone || ""}
                   required
                 />
@@ -173,31 +259,8 @@ const Checkout = () => {
                   id="notes"
                   name="notes"
                   placeholder="Any special instructions?"
+                  rows={2}
                 />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex justify-between">
-                  <span>
-                    {item.product?.name} x {item.quantity}
-                  </span>
-                  <span className="font-semibold">
-                    ${((item.product?.price || 0) * item.quantity).toFixed(2)}
-                  </span>
-                </div>
-              ))}
-              <div className="border-t pt-4 flex justify-between items-center">
-                <span className="text-lg font-semibold">Total</span>
-                <span className="text-2xl font-bold text-primary">
-                  ${totalAmount.toFixed(2)}
-                </span>
               </div>
             </CardContent>
           </Card>

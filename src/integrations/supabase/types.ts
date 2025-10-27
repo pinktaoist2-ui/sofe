@@ -95,8 +95,10 @@ export type Database = {
         Row: {
           created_at: string | null
           delivery_address: string
+          delivery_method: string | null
           id: string
           notes: string | null
+          payment_method: string | null
           phone: string
           status: Database["public"]["Enums"]["order_status"] | null
           total_amount: number
@@ -106,8 +108,10 @@ export type Database = {
         Insert: {
           created_at?: string | null
           delivery_address: string
+          delivery_method?: string | null
           id?: string
           notes?: string | null
+          payment_method?: string | null
           phone: string
           status?: Database["public"]["Enums"]["order_status"] | null
           total_amount: number
@@ -117,8 +121,10 @@ export type Database = {
         Update: {
           created_at?: string | null
           delivery_address?: string
+          delivery_method?: string | null
           id?: string
           notes?: string | null
+          payment_method?: string | null
           phone?: string
           status?: Database["public"]["Enums"]["order_status"] | null
           total_amount?: number

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Cake, LogOut, User, LayoutDashboard } from "lucide-react";
+import { ShoppingCart, LogOut, User, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import logo from "@/assets/tiffany.png";
 
 interface NavbarProps {
   cartItemCount?: number;
@@ -59,12 +60,10 @@ const Navbar = ({ cartItemCount = 0 }: NavbarProps) => {
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="bg-gradient-to-br from-primary to-accent p-2 rounded-lg">
-            <Cake className="h-6 w-6 text-white" />
-          </div>
-          <span className="font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Tiffany's Delight
+        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <img src={logo} alt="Tiffany's Bakery" className="h-10 w-10 object-contain" />
+          <span className="font-semibold text-xl text-foreground">
+            Tiffany's Bakery
           </span>
         </Link>
 
