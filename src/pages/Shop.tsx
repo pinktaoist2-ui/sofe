@@ -164,7 +164,7 @@ const Shop = () => {
                   
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-primary">
-                      ${product.price.toFixed(2)}
+                      ₱{product.price.toFixed(2)}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       Stock: {product.stock_quantity}
