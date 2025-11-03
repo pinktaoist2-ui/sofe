@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Cake, Clock, Heart } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import logo from "@/assets/tiffany.png";
 
 const Index = () => {
   return (
@@ -12,11 +13,14 @@ const Index = () => {
         <section className="container mx-auto px-4 py-20 text-center">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="inline-block">
-              <div className="bg-gradient-to-br from-primary to-accent p-4 rounded-2xl shadow-elegant">
-                <Cake className="h-16 w-16 text-white" />
+              <div className="p-4 rounded-2xl shadow-elegant flex justify-center">
+                <img
+                  src={logo}
+                  alt="Logo"
+                  className="h-32 w-32 rounded-full object-cover "
+                />
               </div>
             </div>
-            
             <h1 className="text-5xl md:text-7xl font-bold leading-tight">
               <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
                 Tiffany's Delight
