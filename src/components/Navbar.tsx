@@ -61,9 +61,9 @@ const Navbar = ({ cartItemCount = 0 }: NavbarProps) => {
     <nav className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <img src={logo} alt="Tiffany's Bakery" className="h-10 w-10 object-contain" />
+          <img src={logo} alt="Tiffany's Delights" className="h-10 w-10 object-contain" />
           <span className="font-semibold text-xl text-foreground">
-            Tiffany's Bakery
+            Tiffany's Delights
           </span>
         </Link>
 
