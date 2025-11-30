@@ -8,6 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import gcashQR from "@/assets/gcash-qr.png";
 
 interface CartItem {
   id: string;
@@ -24,6 +32,8 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [deliveryMethod, setDeliveryMethod] = useState("pickup");
+  const [showGCashQR, setShowGCashQR] = useState(false);
+  const [orderTotal, setOrderTotal] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -116,12 +126,16 @@ const Checkout = () => {
         .delete()
         .eq("user_id", session.user.id);
 
-      toast({
-        title: "Order placed successfully!",
-        description: "Thank you for your order. We'll start preparing it right away!",
-      });
-
-      navigate("/");
+      if (paymentMethod === "gcash") {
+        setOrderTotal(totalAmount);
+        setShowGCashQR(true);
+      } else {
+        toast({
+          title: "Order placed successfully!",
+          description: "Thank you for your order. We'll start preparing it right away!",
+        });
+        navigate("/");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -141,6 +155,40 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      <Dialog open={showGCashQR} onOpenChange={setShowGCashQR}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>GCash Payment</DialogTitle>
+            <DialogDescription>
+              Scan the QR code below to complete your payment of ₱{orderTotal.toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4 p-4">
+            <img
+              src={gcashQR}
+              alt="GCash QR Code"
+              className="w-64 h-64 object-contain"
+            />
+            <p className="text-sm text-muted-foreground text-center">
+              After payment, your order will be processed automatically.
+            </p>
+            <Button
+              onClick={() => {
+                setShowGCashQR(false);
+                toast({
+                  title: "Order placed successfully!",
+                  description: "Thank you for your order. We'll start preparing it right away!",
+                });
+                navigate("/");
+              }}
+              className="w-full"
+            >
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <h1 className="text-3xl font-bold mb-6 text-foreground">Checkout</h1>
