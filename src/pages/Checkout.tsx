@@ -80,7 +80,8 @@ const Checkout = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const formData = new FormData(e.currentTarget);
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
       const paymentMethod = formData.get("payment_method") as string;
       const deliveryMethod = formData.get("delivery_method") as string;
       const deliveryAddress = deliveryMethod === "delivery" 
