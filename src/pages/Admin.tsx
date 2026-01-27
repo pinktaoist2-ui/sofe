@@ -333,7 +333,7 @@ const ProductsTab = () => {
                   </p>
                   <div className="mt-2 flex gap-4 text-sm">
                     <span className="font-semibold text-primary">
-                      ${product.price.toFixed(2)}
+                      ₱{product.price.toFixed(2)}
                     </span>
                     <span>Stock: {product.stock_quantity}</span>
                     <span>Expires: {new Date(product.expire_at).toLocaleDateString()}</span>
@@ -508,7 +508,7 @@ const OrdersTab = () => {
                 <div className="space-y-1">
                   {order.order_items.map((item, idx) => (
                     <p key={idx} className="text-sm">
-                      {item.products.name} x {item.quantity} - $
+                      {item.products.name} x {item.quantity} - ₱
                       {(item.price * item.quantity).toFixed(2)}
                     </p>
                   ))}
@@ -519,7 +519,7 @@ const OrdersTab = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total</p>
                   <p className="text-2xl font-bold text-primary">
-                    ${order.total_amount.toFixed(2)}
+                    ₱{order.total_amount.toFixed(2)}
                   </p>
                 </div>
 

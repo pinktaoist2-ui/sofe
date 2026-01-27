@@ -161,7 +161,7 @@ const Cart = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg mb-1">{item.product?.name}</h3>
                       <p className="text-2xl font-bold text-primary mb-4">
-                        ${((item.product?.price || 0) * item.quantity).toFixed(2)}
+                        ₱{((item.product?.price || 0) * item.quantity).toFixed(2)}
                       </p>
                       
                       <div className="flex items-center gap-4">
@@ -204,7 +204,7 @@ const Cart = () => {
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold">Total</span>
                   <span className="text-3xl font-bold text-primary">
-                    ${totalAmount.toFixed(2)}
+                    ₱{totalAmount.toFixed(2)}
                   </span>
                 </div>
                 <Button

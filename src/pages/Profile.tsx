@@ -166,7 +166,7 @@ const Profile = () => {
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-primary">
-                          ${order.total_amount.toFixed(2)}
+                          ₱{order.total_amount.toFixed(2)}
                         </p>
                         <p className="text-sm capitalize">{order.status}</p>
                       </div>
