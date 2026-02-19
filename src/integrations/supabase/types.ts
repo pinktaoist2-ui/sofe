@@ -49,6 +49,27 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: string
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: string
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -129,6 +150,36 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"] | null
           total_amount?: number
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      otp_codes: {
+        Row: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          used?: boolean
           user_id?: string
         }
         Relationships: []
@@ -228,11 +279,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_otp: {
+        Args: { p_code: string; p_email: string; p_user_id: string }
+        Returns: undefined
+      }
+      get_lockout_remaining: { Args: { p_email: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_locked_out: { Args: { p_email: string }; Returns: boolean }
+      record_login_attempt: {
+        Args: { p_email: string; p_success: boolean }
+        Returns: undefined
+      }
+      verify_otp: {
+        Args: { p_code: string; p_email: string }
         Returns: boolean
       }
     }
