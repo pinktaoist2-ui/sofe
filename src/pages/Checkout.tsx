@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ const Checkout = () => {
   const [deliveryMethod, setDeliveryMethod] = useState("pickup");
   const [showGCashQR, setShowGCashQR] = useState(false);
   const [orderTotal, setOrderTotal] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -74,7 +75,8 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    if (!formRef.current) return;
+    const formData = new FormData(formRef.current);
     setLoading(true);
 
     try {
@@ -192,7 +194,7 @@ const Checkout = () => {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <h1 className="text-3xl font-bold mb-6 text-foreground">Checkout</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
