@@ -64,6 +64,15 @@ const Shop = () => {
       return;
     }
 
+    if (product.expire_at && new Date(product.expire_at).getTime() <= new Date().getTime()) {
+      toast({
+        variant: "destructive",
+        title: "Product expired",
+        description: "This product has expired and cannot be added to cart",
+      });
+      return;
+    }
+
     try {
       const { data: existingItem } = await supabase
         .from("cart_items")
@@ -98,6 +107,11 @@ const Shop = () => {
         description: error.message,
       });
     }
+  };
+
+  const isExpired = (expireAt: string | null) => {
+    if (!expireAt) return false;
+    return new Date(expireAt).getTime() <= new Date().getTime();
   };
 
   const isExpiringSoon = (expireAt: string | null) => {
@@ -173,7 +187,12 @@ const Shop = () => {
 
                   {product.expire_at && (
                     <div className="flex items-center gap-2 mb-4">
-                      {isExpiringSoon(product.expire_at) ? (
+                      {isExpired(product.expire_at) ? (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Expired
+                        </Badge>
+                      ) : isExpiringSoon(product.expire_at) ? (
                         <Badge variant="destructive" className="gap-1">
                           <AlertCircle className="h-3 w-3" />
                           Expires {formatExpireDate(product.expire_at)}
@@ -190,10 +209,10 @@ const Shop = () => {
                   <Button
                     className="w-full gap-2"
                     onClick={() => addToCart(product)}
-                    disabled={product.stock_quantity === 0}
+                    disabled={product.stock_quantity === 0 || isExpired(product.expire_at)}
                   >
                     <ShoppingCart className="h-4 w-4" />
-                    {product.stock_quantity === 0 ? "Out of Stock" : "Add to Cart"}
+                    {isExpired(product.expire_at) ? "Expired" : product.stock_quantity === 0 ? "Out of Stock" : "Add to Cart"}
                   </Button>
                 </CardFooter>
               </Card>
