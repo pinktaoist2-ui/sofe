@@ -6,16 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Cake, Mail, ArrowLeft, Sparkles } from "lucide-react";
+import { Cake, Mail, ArrowLeft, Sparkles, KeyRound } from "lucide-react";
 import { lovable } from "@/integrations/lovable/index";
 import { Separator } from "@/components/ui/separator";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,7 +45,7 @@ const Auth = () => {
     }
   };
 
-  const handleMagicLink = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -51,21 +53,21 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          shouldCreateUser: true,
         },
       });
 
       if (error) throw error;
 
-      setMagicLinkSent(true);
+      setOtpSent(true);
       toast({
-        title: "Magic link sent! ✨",
-        description: "Check your inbox for a login link.",
+        title: "Code sent! ✨",
+        description: "Check your inbox for a 6-digit code.",
       });
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Couldn't send magic link",
+        title: "Couldn't send code",
         description: error.message,
       });
     } finally {
@@ -73,35 +75,92 @@ const Auth = () => {
     }
   };
 
-  if (magicLinkSent) {
+  const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: "email",
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Welcome! 🎉",
+        description: "You've successfully signed in.",
+      });
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Invalid code",
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (otpSent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary/30 to-accent/20 p-4">
         <Card className="w-full max-w-md shadow-lg border-accent/30">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
               <div className="bg-gradient-to-br from-primary/20 to-accent/30 p-5 rounded-full">
-                <Mail className="h-10 w-10 text-primary" />
+                <KeyRound className="h-10 w-10 text-primary" />
               </div>
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">
-              Check your inbox
+              Enter your code
             </CardTitle>
             <CardDescription className="text-base">
-              We sent a magic login link to{" "}
+              We sent a 6-digit code to{" "}
               <span className="font-semibold text-primary">{email}</span>
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} className="h-12 w-12 text-lg border-accent/50" />
+                    <InputOTPSlot index={1} className="h-12 w-12 text-lg border-accent/50" />
+                    <InputOTPSlot index={2} className="h-12 w-12 text-lg border-accent/50" />
+                    <InputOTPSlot index={3} className="h-12 w-12 text-lg border-accent/50" />
+                    <InputOTPSlot index={4} className="h-12 w-12 text-lg border-accent/50" />
+                    <InputOTPSlot index={5} className="h-12 w-12 text-lg border-accent/50" />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button
+                type="submit"
+                className="w-full h-11 text-base"
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? "Verifying..." : "Verify & Sign In"}
+              </Button>
+            </form>
             <p className="text-sm text-muted-foreground text-center">
-              Click the link in the email to sign in. If you don't see it, check your spam folder.
+              Didn't get a code? Check spam or{" "}
+              <button
+                type="button"
+                className="text-primary hover:underline font-medium"
+                onClick={() => { setOtpSent(false); setOtp(""); }}
+              >
+                resend
+              </button>
             </p>
             <Button
               variant="ghost"
               className="w-full gap-2 text-muted-foreground hover:text-foreground"
-              onClick={() => setMagicLinkSent(false)}
+              onClick={() => { setOtpSent(false); setOtp(""); }}
             >
               <ArrowLeft className="h-4 w-4" />
-              Try a different email
+              Use a different email
             </Button>
           </CardContent>
         </Card>
@@ -123,12 +182,12 @@ const Auth = () => {
           </CardTitle>
           <CardDescription className="flex items-center justify-center gap-1">
             <Sparkles className="h-3.5 w-3.5 text-primary/60" />
-            Sign in with a magic link — no password needed
+            Sign in with a one-time code — no password needed
             <Sparkles className="h-3.5 w-3.5 text-primary/60" />
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <form onSubmit={handleMagicLink} className="space-y-4">
+          <form onSubmit={handleSendOtp} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
@@ -151,7 +210,7 @@ const Auth = () => {
               ) : (
                 <>
                   <Mail className="h-4 w-4" />
-                  Send me a magic link
+                  Send me a code
                 </>
               )}
             </Button>
