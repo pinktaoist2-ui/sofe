@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   AlertTriangle, Package, TrendingDown, RefreshCw, Upload, X,
   ImageIcon, Plus, Pencil, Trash2, TrendingUp, ShoppingBag, Users, BarChart2,
+  Tag, ToggleLeft, ToggleRight, Copy, Star, MessageSquare, CheckCircle, EyeOff, ArrowUpDown,
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -64,16 +65,22 @@ const Admin = () => {
           Admin Dashboard
         </h1>
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="analytics">📊 Analytics</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="inventory">Inventory</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsList className="flex w-full overflow-x-auto h-auto flex-nowrap justify-start gap-1 pb-1">
+            <TabsTrigger value="analytics" className="whitespace-nowrap">Analytics</TabsTrigger>
+            <TabsTrigger value="products" className="whitespace-nowrap">Products</TabsTrigger>
+            <TabsTrigger value="inventory" className="whitespace-nowrap">Inventory</TabsTrigger>
+            <TabsTrigger value="orders" className="whitespace-nowrap">Orders</TabsTrigger>
+            <TabsTrigger value="promos" className="whitespace-nowrap">Promos</TabsTrigger>
+            <TabsTrigger value="categories" className="whitespace-nowrap">Categories</TabsTrigger>
+            <TabsTrigger value="reviews" className="whitespace-nowrap">Reviews</TabsTrigger>
           </TabsList>
           <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
           <TabsContent value="products"><ProductsTab /></TabsContent>
           <TabsContent value="inventory"><InventoryTab /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
+          <TabsContent value="promos"><PromosTab /></TabsContent>
+          <TabsContent value="categories"><CategoriesTab /></TabsContent>
+          <TabsContent value="reviews"><ReviewsTab /></TabsContent>
         </Tabs>
       </main>
     </div>
@@ -709,6 +716,653 @@ const OrdersTab = () => {
   );
 };
 
-// add kau pls
+// ─── PromosTab ────────────────────────────────────────────────────────────────
+const emptyPromo = {
+  code: "", description: "", discount_type: "percentage", discount_value: "",
+  buy_quantity: "", get_quantity: "", applies_to: "entire_order",
+  minimum_order: "", one_time_per_customer: true, expires_at: "", is_active: true,
+};
+
+const DISCOUNT_TYPE_LABELS: Record<string, string> = {
+  percentage: "Percentage (% off)",
+  fixed: "Fixed Amount (₱ off)",
+  free_delivery: "Free Delivery",
+  buy_x_get_y: "Buy X Get Y Free",
+};
+
+const APPLIES_TO_LABELS: Record<string, string> = {
+  entire_order: "Entire Order",
+  specific_products: "Specific Products",
+  specific_categories: "Specific Categories",
+};
+
+const PromosTab = () => {
+  const [promos, setPromos] = useState<any[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<any>(emptyPromo);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
+  const { toast } = useToast();
+
+  useEffect(() => { fetchPromos(); }, []);
+
+  const fetchPromos = async () => {
+    const { data, error } = await supabase
+      .from("promo_codes").select("*").order("created_at", { ascending: false });
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    setPromos(data || []);
+
+    // fetch usage counts
+    if (data && data.length > 0) {
+      const counts: Record<string, number> = {};
+      await Promise.all(data.map(async (p) => {
+        const { count } = await supabase
+          .from("promo_code_uses").select("id", { count: "exact", head: true })
+          .eq("promo_code_id", p.id);
+        counts[p.id] = count || 0;
+      }));
+      setUsageCounts(counts);
+    }
+  };
+
+  const openAdd = () => { setFormData(emptyPromo); setEditingId(null); setDialogOpen(true); };
+  const openEdit = (p: any) => {
+    setFormData({
+      code: p.code, description: p.description || "", discount_type: p.discount_type,
+      discount_value: p.discount_value?.toString() || "", buy_quantity: p.buy_quantity?.toString() || "",
+      get_quantity: p.get_quantity?.toString() || "", applies_to: p.applies_to,
+      minimum_order: p.minimum_order?.toString() || "0",
+      one_time_per_customer: p.one_time_per_customer, expires_at: p.expires_at ? p.expires_at.slice(0, 10) : "",
+      is_active: p.is_active,
+    });
+    setEditingId(p.id); setDialogOpen(true);
+  };
+  const closeDialog = () => { setDialogOpen(false); setEditingId(null); setFormData(emptyPromo); };
+
+  const generateCode = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const code = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    setFormData((prev: any) => ({ ...prev, code }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload: any = {
+      code: formData.code.toUpperCase().trim(),
+      description: formData.description,
+      discount_type: formData.discount_type,
+      discount_value: parseFloat(formData.discount_value) || 0,
+      applies_to: formData.applies_to,
+      minimum_order: parseFloat(formData.minimum_order) || 0,
+      one_time_per_customer: formData.one_time_per_customer,
+      expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : null,
+      is_active: formData.is_active,
+    };
+    if (formData.discount_type === "buy_x_get_y") {
+      payload.buy_quantity = parseInt(formData.buy_quantity) || 1;
+      payload.get_quantity = parseInt(formData.get_quantity) || 1;
+    }
+
+    if (editingId) {
+      const { error } = await supabase.from("promo_codes").update(payload).eq("id", editingId);
+      if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+      toast({ title: "✅ Promo updated!" });
+    } else {
+      const { error } = await supabase.from("promo_codes").insert([payload]);
+      if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+      toast({ title: "🎉 Promo code created!" });
+    }
+    closeDialog(); fetchPromos();
+  };
+
+  const toggleActive = async (id: string, current: boolean) => {
+    const { error } = await supabase.from("promo_codes").update({ is_active: !current }).eq("id", id);
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    toast({ title: current ? "Promo deactivated" : "✅ Promo activated!" });
+    fetchPromos();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this promo code?")) return;
+    const { error } = await supabase.from("promo_codes").delete().eq("id", id);
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    toast({ title: "Promo deleted" }); fetchPromos();
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({ title: "📋 Code copied!", description: code });
+  };
+
+  const isExpired = (expires_at: string | null) => expires_at ? new Date(expires_at) < new Date() : false;
+
+  const getDiscountLabel = (p: any) => {
+    if (p.discount_type === "percentage") return `${p.discount_value}% off`;
+    if (p.discount_type === "fixed") return `₱${p.discount_value} off`;
+    if (p.discount_type === "free_delivery") return "Free Delivery";
+    if (p.discount_type === "buy_x_get_y") return `Buy ${p.buy_quantity} Get ${p.get_quantity} Free`;
+    return "—";
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold">Promotions & Discounts</h2>
+        <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" /> Create Promo</Button>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-pink-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Total Promos</p><p className="text-2xl font-bold">{promos.length}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-green-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Active</p><p className="text-2xl font-bold text-green-500">{promos.filter(p => p.is_active && !isExpired(p.expires_at)).length}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-red-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Expired</p><p className="text-2xl font-bold text-red-500">{promos.filter(p => isExpired(p.expires_at)).length}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-purple-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Total Uses</p><p className="text-2xl font-bold text-purple-500">{Object.values(usageCounts).reduce((a, b) => a + b, 0)}</p></CardContent></Card>
+      </div>
+
+      {/* ── Create/Edit Dialog ── */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {editingId ? "✏️ Edit Promo Code" : "🎟️ Create Promo Code"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+
+            {/* Code */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Promo Code</label>
+              <div className="flex gap-2">
+                <Input placeholder="e.g. SWEET10" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} required className="font-mono tracking-widest" />
+                <Button type="button" variant="outline" size="sm" onClick={generateCode} className="whitespace-nowrap">Auto Generate</Button>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description <span className="text-muted-foreground">(optional)</span></label>
+              <Input placeholder="e.g. 10% off for new customers" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+            </div>
+
+            {/* Discount Type */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Discount Type</label>
+              <Select value={formData.discount_type} onValueChange={(v) => setFormData({ ...formData, discount_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DISCOUNT_TYPE_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Discount Value */}
+            {formData.discount_type !== "free_delivery" && formData.discount_type !== "buy_x_get_y" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{formData.discount_type === "percentage" ? "Discount (%)" : "Discount Amount (₱)"}</label>
+                <Input type="number" step="0.01" min="0" placeholder={formData.discount_type === "percentage" ? "e.g. 10" : "e.g. 50"} value={formData.discount_value} onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })} required />
+              </div>
+            )}
+
+            {/* Buy X Get Y */}
+            {formData.discount_type === "buy_x_get_y" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Buy Quantity</label>
+                  <Input type="number" min="1" placeholder="e.g. 2" value={formData.buy_quantity} onChange={(e) => setFormData({ ...formData, buy_quantity: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Get Quantity Free</label>
+                  <Input type="number" min="1" placeholder="e.g. 1" value={formData.get_quantity} onChange={(e) => setFormData({ ...formData, get_quantity: e.target.value })} required />
+                </div>
+              </div>
+            )}
+
+            {/* Applies To */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Applies To</label>
+              <Select value={formData.applies_to} onValueChange={(v) => setFormData({ ...formData, applies_to: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(APPLIES_TO_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Minimum Order */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Minimum Order Amount (₱) <span className="text-muted-foreground">— 0 means no minimum</span></label>
+              <Input type="number" step="0.01" min="0" placeholder="e.g. 500" value={formData.minimum_order} onChange={(e) => setFormData({ ...formData, minimum_order: e.target.value })} />
+            </div>
+
+            {/* Expiry Date */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Expiry Date <span className="text-muted-foreground">— leave blank for no expiry</span></label>
+              <Input type="date" value={formData.expires_at} onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })} />
+            </div>
+
+            {/* Toggles */}
+            <div className="flex flex-col gap-3 pt-1">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-sm font-medium">One-time use per customer</span>
+                <button type="button" onClick={() => setFormData({ ...formData, one_time_per_customer: !formData.one_time_per_customer })}>
+                  {formData.one_time_per_customer
+                    ? <ToggleRight className="h-7 w-7 text-primary" />
+                    : <ToggleLeft className="h-7 w-7 text-muted-foreground" />}
+                </button>
+              </label>
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-sm font-medium">Active</span>
+                <button type="button" onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}>
+                  {formData.is_active
+                    ? <ToggleRight className="h-7 w-7 text-green-500" />
+                    : <ToggleLeft className="h-7 w-7 text-muted-foreground" />}
+                </button>
+              </label>
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+              <Button type="submit" className="gap-2"><Tag className="h-4 w-4" />{editingId ? "Update Promo" : "Create Promo"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Promos List ── */}
+      <div className="grid gap-4">
+        {promos.length === 0 && (
+          <Card><CardContent className="p-12 text-center text-muted-foreground">
+            <Tag className="h-12 w-12 mx-auto mb-3 text-primary/30" />
+            <p>No promo codes yet. Click "Create Promo" to get started!</p>
+          </CardContent></Card>
+        )}
+        {promos.map((promo) => {
+          const expired = isExpired(promo.expires_at);
+          const active = promo.is_active && !expired;
+          return (
+            <Card key={promo.id} className={`hover:shadow-md transition-shadow ${expired ? "opacity-60" : ""}`}>
+              <CardContent className="p-5">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* Code badge */}
+                      <span className="font-mono font-bold text-lg tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-lg">
+                        {promo.code}
+                      </span>
+                      <button onClick={() => copyCode(promo.code)} className="text-muted-foreground hover:text-primary transition-colors">
+                        <Copy className="h-4 w-4" />
+                      </button>
+                      <Badge className={active ? "bg-green-500 text-white" : "bg-gray-400 text-white"}>
+                        {expired ? "Expired" : active ? "Active" : "Inactive"}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">{DISCOUNT_TYPE_LABELS[promo.discount_type]}</Badge>
+                    </div>
+
+                    {promo.description && <p className="text-sm text-muted-foreground">{promo.description}</p>}
+
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="font-semibold text-primary">{getDiscountLabel(promo)}</span>
+                      <span className="text-muted-foreground">Applies to: {APPLIES_TO_LABELS[promo.applies_to]}</span>
+                      {promo.minimum_order > 0 && <span className="text-muted-foreground">Min. order: ₱{promo.minimum_order}</span>}
+                      {promo.one_time_per_customer && <span className="text-muted-foreground">One-time use</span>}
+                      {promo.expires_at && <span className={expired ? "text-red-500 font-medium" : "text-muted-foreground"}>Expires: {new Date(promo.expires_at).toLocaleDateString()}</span>}
+                      <span className="text-muted-foreground">Used: <strong>{usageCounts[promo.id] || 0}x</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => toggleActive(promo.id, promo.is_active)} className="gap-1">
+                      {promo.is_active ? <ToggleRight className="h-4 w-4 text-green-500" /> : <ToggleLeft className="h-4 w-4" />}
+                      {promo.is_active ? "Disable" : "Enable"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => openEdit(promo)} className="gap-1"><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(promo.id)} className="gap-1"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ─── CategoriesTab ────────────────────────────────────────────────────────────
+const emptyCat = { name: "", description: "", image_url: "", display_order: "0" };
+
+const CategoriesTab = () => {
+  const [categories, setCategories] = useState<any[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [formData, setFormData] = useState(emptyCat);
+  const { toast } = useToast();
+
+  useEffect(() => { fetchCategories(); }, []);
+
+  const fetchCategories = async () => {
+    const { data, error } = await (supabase as any)
+      .from("categories").select("*").order("display_order", { ascending: true });
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    setCategories(data || []);
+  };
+
+  const openAdd = () => { setFormData(emptyCat); setImageFile(null); setImagePreview(""); setEditingId(null); setDialogOpen(true); };
+  const openEdit = (cat: any) => {
+    setFormData({ name: cat.name, description: cat.description || "", image_url: cat.image_url || "", display_order: cat.display_order?.toString() || "0" });
+    setImageFile(null); setImagePreview(cat.image_url || ""); setEditingId(cat.id); setDialogOpen(true);
+  };
+  const closeDialog = () => { setDialogOpen(false); setEditingId(null); setFormData(emptyCat); setImageFile(null); setImagePreview(""); };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast({ variant: "destructive", title: "Invalid file", description: "Please select an image." }); return; }
+    if (file.size > 5 * 1024 * 1024) { toast({ variant: "destructive", title: "Too large", description: "Max 5MB." }); return; }
+    setImageFile(file); setImagePreview(URL.createObjectURL(file));
+    setFormData(prev => ({ ...prev, image_url: "" }));
+  };
+
+  const uploadImage = async (): Promise<string> => {
+    if (!imageFile) return formData.image_url;
+    setUploadingImage(true);
+    try {
+      const ext = imageFile.name.split(".").pop();
+      const fileName = `cat-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(fileName, imageFile, { cacheControl: "3600", upsert: false });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(fileName);
+      return publicUrl;
+    } finally { setUploadingImage(false); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let imageUrl = formData.image_url;
+    if (imageFile) {
+      try { imageUrl = await uploadImage(); }
+      catch (err: any) { toast({ variant: "destructive", title: "Upload failed", description: err.message }); return; }
+    }
+    const payload = { name: formData.name, description: formData.description, image_url: imageUrl, display_order: parseInt(formData.display_order) || 0 };
+    if (editingId) {
+      const { error } = await (supabase as any).from("categories").update(payload).eq("id", editingId);
+      if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+      toast({ title: "✅ Category updated!" });
+    } else {
+      const { error } = await (supabase as any).from("categories").insert([payload]);
+      if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+      toast({ title: "🎉 Category created!" });
+    }
+    closeDialog(); fetchCategories();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this category? Products in this category will be unaffected.")) return;
+    const { error } = await (supabase as any).from("categories").delete().eq("id", id);
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    toast({ title: "Category deleted" }); fetchCategories();
+  };
+
+  const moveOrder = async (cat: any, direction: "up" | "down") => {
+    const newOrder = direction === "up" ? cat.display_order - 1 : cat.display_order + 1;
+    await (supabase as any).from("categories").update({ display_order: newOrder }).eq("id", cat.id);
+    fetchCategories();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold">Manage Categories</h2>
+        <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" /> Add Category</Button>
+      </div>
+
+      {/* Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {editingId ? "✏️ Edit Category" : "🗂️ Add Category"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Category Name</label>
+              <Input placeholder="e.g. Cakes, Pastries, Drinks" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Display Order <span className="text-muted-foreground">(lower = first)</span></label>
+              <Input type="number" min="0" placeholder="0" value={formData.display_order} onChange={(e) => setFormData({ ...formData, display_order: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Category Image <span className="text-muted-foreground">(optional)</span></label>
+              {imagePreview ? (
+                <div className="relative w-full h-36 rounded-xl overflow-hidden border border-border">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => { setImageFile(null); setImagePreview(""); setFormData(prev => ({ ...prev, image_url: "" })); }} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-primary/30 rounded-xl cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all">
+                  <ImageIcon className="h-8 w-8 text-primary/40 mb-1" />
+                  <p className="text-sm font-medium text-primary">Click to upload</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG, WEBP up to 5MB</p>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                </label>
+              )}
+            </div>
+            <DialogFooter className="gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+              <Button type="submit" disabled={uploadingImage} className="gap-2">
+                {uploadingImage ? <><RefreshCw className="h-4 w-4 animate-spin" /> Uploading...</> : editingId ? "Update" : "Create Category"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Categories Grid */}
+      {categories.length === 0 && (
+        <Card><CardContent className="p-12 text-center text-muted-foreground">
+          <Package className="h-12 w-12 mx-auto mb-3 text-primary/30" />
+          <p>No categories yet. Add one to organize your products!</p>
+        </CardContent></Card>
+      )}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {categories.map((cat, idx) => (
+          <Card key={cat.id} className="hover:shadow-md transition-shadow overflow-hidden">
+            {cat.image_url && <img src={cat.image_url} alt={cat.name} className="w-full h-32 object-cover" />}
+            {!cat.image_url && <div className="w-full h-32 bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center"><Package className="h-10 w-10 text-primary/30" /></div>}
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-base">{cat.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Order: {cat.display_order ?? 0}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button onClick={() => moveOrder(cat, "up")} disabled={idx === 0} className="text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors"><ArrowUpDown className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => openEdit(cat)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                <Button variant="destructive" size="sm" className="flex-1 gap-1" onClick={() => handleDelete(cat.id)}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── ReviewsTab ───────────────────────────────────────────────────────────────
+
+const StarRating = ({ rating }: { rating: number }) => (
+  <div className="flex gap-0.5">
+    {[1, 2, 3, 4, 5].map(i => (
+      <Star key={i} className={`h-4 w-4 ${i <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
+    ))}
+  </div>
+);
+
+const ReviewsTab = () => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "hidden">("pending");
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const { toast } = useToast();
+
+  useEffect(() => { fetchReviews(); }, [filter]);
+
+  const fetchReviews = async () => {
+    let query = (supabase as any)
+      .from("reviews")
+      .select(`*, products(name, image_url), profiles(full_name, email)`)
+      .order("created_at", { ascending: false });
+    if (filter !== "all") query = query.eq("status", filter);
+    const { data, error } = await query;
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    setReviews(data || []);
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    const { error } = await (supabase as any).from("reviews").update({ status }).eq("id", id);
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    toast({ title: status === "approved" ? "✅ Review approved!" : status === "hidden" ? "🚫 Review hidden" : "Review updated" });
+    fetchReviews();
+  };
+
+  const submitReply = async (id: string) => {
+    if (!replyText.trim()) return;
+    const { error } = await (supabase as any).from("reviews").update({ admin_reply: replyText.trim() }).eq("id", id);
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    toast({ title: "💬 Reply posted!" });
+    setReplyingId(null); setReplyText(""); fetchReviews();
+  };
+
+  const deleteReview = async (id: string) => {
+    if (!confirm("Delete this review permanently?")) return;
+    const { error } = await (supabase as any).from("reviews").delete().eq("id", id);
+    if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
+    toast({ title: "Review deleted" }); fetchReviews();
+  };
+
+  const pending = reviews.filter(r => r.status === "pending").length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-semibold">Reviews & Ratings</h2>
+          {pending > 0 && <Badge className="bg-yellow-500 text-white">{pending} pending</Badge>}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {(["pending", "approved", "hidden", "all"] as const).map(f => (
+            <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize">{f}</Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-yellow-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Pending</p><p className="text-2xl font-bold text-yellow-500">{reviews.filter(r => r.status === "pending").length}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-green-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Approved</p><p className="text-2xl font-bold text-green-500">{reviews.filter(r => r.status === "approved").length}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-red-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Hidden</p><p className="text-2xl font-bold text-red-400">{reviews.filter(r => r.status === "hidden").length}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-pink-400"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Avg Rating</p><p className="text-2xl font-bold text-pink-500">{reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "—"} ⭐</p></CardContent></Card>
+      </div>
+
+      {/* Reviews List */}
+      <div className="grid gap-4">
+        {reviews.length === 0 && (
+          <Card><CardContent className="p-12 text-center text-muted-foreground">
+            <Star className="h-12 w-12 mx-auto mb-3 text-primary/30" />
+            <p>No {filter === "all" ? "" : filter} reviews yet.</p>
+          </CardContent></Card>
+        )}
+        {reviews.map((review) => (
+          <Card key={review.id} className={`hover:shadow-md transition-shadow ${review.status === "hidden" ? "opacity-60" : ""}`}>
+            <CardContent className="p-5 space-y-3">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/30 flex items-center justify-center text-sm font-bold text-primary">
+                    {review.profiles?.full_name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{review.profiles?.full_name || "Anonymous"}</p>
+                    <p className="text-xs text-muted-foreground">{review.profiles?.email}</p>
+                  </div>
+                </div>
+                <Badge className={review.status === "approved" ? "bg-green-500 text-white" : review.status === "hidden" ? "bg-gray-400 text-white" : "bg-yellow-500 text-white"}>
+                  {review.status}
+                </Badge>
+              </div>
+
+              {/* Product + Rating */}
+              <div className="flex items-center gap-3">
+                {review.products?.image_url && <img src={review.products.image_url} alt={review.products.name} className="w-10 h-10 rounded-lg object-cover border border-border" />}
+                <div>
+                  <p className="text-sm font-medium">{review.products?.name}</p>
+                  <StarRating rating={review.rating} />
+                </div>
+                <p className="text-xs text-muted-foreground ml-auto">{new Date(review.created_at).toLocaleDateString()}</p>
+              </div>
+
+              {/* Review Text */}
+              {review.review_text && <p className="text-sm bg-muted/30 rounded-lg p-3 italic">"{review.review_text}"</p>}
+
+              {/* Admin Reply */}
+              {review.admin_reply && (
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-primary mb-1">🎀 Admin Reply</p>
+                  <p className="text-sm">{review.admin_reply}</p>
+                </div>
+              )}
+
+              {/* Reply Box */}
+              {replyingId === review.id && (
+                <div className="space-y-2">
+                  <Textarea placeholder="Write a reply..." value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={2} className="resize-none text-sm" />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => submitReply(review.id)} className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Post Reply</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setReplyingId(null); setReplyText(""); }}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 flex-wrap pt-1 border-t">
+                {review.status !== "approved" && (
+                  <Button size="sm" variant="outline" className="gap-1 text-green-600 border-green-200 hover:bg-green-50" onClick={() => updateStatus(review.id, "approved")}>
+                    <CheckCircle className="h-3.5 w-3.5" /> Approve
+                  </Button>
+                )}
+                {review.status !== "hidden" && (
+                  <Button size="sm" variant="outline" className="gap-1 text-gray-500" onClick={() => updateStatus(review.id, "hidden")}>
+                    <EyeOff className="h-3.5 w-3.5" /> Hide
+                  </Button>
+                )}
+                {review.status === "hidden" && (
+                  <Button size="sm" variant="outline" className="gap-1 text-blue-500" onClick={() => updateStatus(review.id, "approved")}>
+                    <CheckCircle className="h-3.5 w-3.5" /> Restore
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="gap-1" onClick={() => { setReplyingId(replyingId === review.id ? null : review.id); setReplyText(review.admin_reply || ""); }}>
+                  <MessageSquare className="h-3.5 w-3.5" /> {review.admin_reply ? "Edit Reply" : "Reply"}
+                </Button>
+                <Button size="sm" variant="destructive" className="gap-1 ml-auto" onClick={() => deleteReview(review.id)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default Admin;
