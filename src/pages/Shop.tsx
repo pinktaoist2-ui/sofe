@@ -21,6 +21,7 @@ const Shop = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [addedItems, setAddedItems] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -86,15 +87,17 @@ const Shop = () => {
           .from("cart_items")
           .update({ quantity: existingItem.quantity + 1 })
           .eq("id", existingItem.id);
-
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("cart_items")
           .insert({ user_id: user.id, product_id: product.id, quantity: 1 });
-
         if (error) throw error;
       }
+
+      // Flash "Added!" feedback
+      setAddedItems((prev) => ({ ...prev, [product.id]: true }));
+      setTimeout(() => setAddedItems((prev) => ({ ...prev, [product.id]: false })), 1500);
 
       toast({
         title: "Added to cart",
@@ -124,16 +127,16 @@ const Shop = () => {
 
   const formatExpireDate = (expireAt: string | null) => {
     if (!expireAt) return null;
-    const date = new Date(expireAt);
-    return date.toLocaleDateString();
+    return new Date(expireAt).toLocaleDateString();
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <p className="text-center text-muted-foreground">Loading products...</p>
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <span className="text-5xl animate-bounce">🧁</span>
+          <p className="text-muted-foreground text-sm tracking-wide">Loading fresh pastries...</p>
         </div>
       </div>
     );
@@ -142,8 +145,10 @@ const Shop = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-secondary/10 to-background">
       <Navbar />
-      
-      <main className="container mx-auto px-4 py-8">
+
+      <main className="container mx-auto px-4 py-10">
+
+        {/* Hero */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Our Delicious Pastries
@@ -153,73 +158,152 @@ const Shop = () => {
           </p>
         </div>
 
+        {/* Grid */}
         {products.length === 0 ? (
-          <p className="text-center text-muted-foreground">No products available at the moment.</p>
+          <div className="text-center py-24">
+            <span className="text-6xl mb-4 block">🧺</span>
+            <p className="text-muted-foreground">No products available at the moment.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <CardHeader className="p-0">
-                  <div className="aspect-square bg-secondary/20 flex items-center justify-center overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7">
+            {products.map((product, i) => {
+              const expired = isExpired(product.expire_at);
+              const expiringSoon = isExpiringSoon(product.expire_at);
+              const isAdded = addedItems[product.id];
+
+              return (
+                <div
+                  key={product.id}
+                  className="rounded-2xl overflow-hidden bg-white flex flex-col"
+                  style={{
+                    boxShadow: "0 2px 24px rgba(0,0,0,0.07)",
+                    transition: "transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease",
+                    animation: `fadeInUp 0.5s ease ${i * 0.07}s both`,
+                    opacity: expired ? 0.6 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-8px) scale(1.01)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(0,0,0,0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0) scale(1)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 24px rgba(0,0,0,0.07)";
+                  }}
+                >
+                  {/* Image */}
+                  <div
+                    className="relative overflow-hidden"
+                    style={{
+                      height: "220px",
+                      background: "linear-gradient(135deg, #fce7f3, #fef3c7)",
+                    }}
+                  >
                     {product.image_url ? (
                       <img
                         src={product.image_url}
                         alt={product.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                       />
                     ) : (
-                      <span className="text-6xl">🧁</span>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span style={{ fontSize: "72px", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.1))" }}>🧁</span>
+                      </div>
+                    )}
+
+                    {/* Stock badge */}
+                    {product.stock_quantity === 0 && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="bg-white text-gray-800 text-xs font-semibold px-3 py-1 rounded-full">Out of Stock</span>
+                      </div>
                     )}
                   </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <CardTitle className="mb-2">{product.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground mb-4">{product.description}</p>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-primary">
-                      ₱{product.price.toFixed(2)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      Stock: {product.stock_quantity}
-                    </span>
-                  </div>
 
-                  {product.expire_at && (
-                    <div className="flex items-center gap-2 mb-4">
-                      {isExpired(product.expire_at) ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Expired
-                        </Badge>
-                      ) : isExpiringSoon(product.expire_at) ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Expires {formatExpireDate(product.expire_at)}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          Best before {formatExpireDate(product.expire_at)}
-                        </Badge>
-                      )}
+                  {/* Content */}
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="text-xl font-semibold mb-1 text-foreground">
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4 leading-relaxed flex-1">
+                      {product.description}
+                    </p>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <span
+                      className="text-2xl font-bold text-primary"
+                        style={{}}
+                      >
+                        ₱{product.price.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-muted-foreground bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                        Stock: {product.stock_quantity}
+                      </span>
                     </div>
-                  )}
-                </CardContent>
-                <CardFooter className="p-6 pt-0">
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => addToCart(product)}
-                    disabled={product.stock_quantity === 0 || isExpired(product.expire_at)}
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    {isExpired(product.expire_at) ? "Expired" : product.stock_quantity === 0 ? "Out of Stock" : "Add to Cart"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+
+                    {/* Expiry badge */}
+                    {product.expire_at && (
+                      <div className="mb-4">
+                        {expired ? (
+                          <Badge variant="destructive" className="gap-1 text-xs">
+                            <AlertCircle className="h-3 w-3" /> Expired
+                          </Badge>
+                        ) : expiringSoon ? (
+                          <Badge variant="destructive" className="gap-1 text-xs">
+                            <AlertCircle className="h-3 w-3" /> Expires {formatExpireDate(product.expire_at)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs text-muted-foreground">
+                            Best before {formatExpireDate(product.expire_at)}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Add to Cart Button */}
+                    <button
+                      onClick={() => addToCart(product)}
+                      disabled={product.stock_quantity === 0 || expired}
+                      className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: isAdded
+                          ? "linear-gradient(135deg, #22c55e, #16a34a)"
+                          : product.stock_quantity === 0 || expired
+                          ? "#d1d5db"
+                          : "hsl(var(--primary))",
+                        boxShadow: isAdded
+                          ? "0 4px 14px rgba(34,197,94,0.35)"
+                          : product.stock_quantity === 0 || expired
+                          ? "none"
+                          : "0 4px 14px hsl(var(--primary) / 0.35)",
+                        transform: isAdded ? "scale(0.97)" : "scale(1)",
+                      }}
+                    >
+                      {isAdded ? (
+                        <>✓ Added!</>
+                      ) : expired ? (
+                        "Expired"
+                      ) : product.stock_quantity === 0 ? (
+                        "Out of Stock"
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-4 w-4" />
+                          Add to Cart
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };
