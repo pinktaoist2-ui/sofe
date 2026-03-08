@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import bakeryImg from '../assets/login_image.jpg';
-import bakeryImg2 from '../assets/login_image2.jpg';
-import bakeryImg3 from '../assets/login_image3.jpg';
+import bakeryImg from "../assets/login_image.jpg";
+import bakeryImg2 from "../assets/login_image2.jpg";
+import bakeryImg3 from "../assets/login_image3.jpg";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -26,7 +26,7 @@ const Auth = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImg(prev => (prev + 1) % images.length);
+      setCurrentImg((prev) => (prev + 1) % images.length);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -35,34 +35,50 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (error) throw error;
       toast({ title: "Welcome!", description: "Signed in successfully." });
       navigate("/");
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Sign in failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Sign in failed",
+        description: error.message,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Fixed: use signUp (with password) instead of signInWithOtp
+  // so the user has a password set and can log in with signInWithPassword
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          shouldCreateUser: true,
           data: { full_name: name },
           emailRedirectTo: undefined,
         },
       });
       if (error) throw error;
       setOtpSent(true);
-      toast({ title: "Code sent!", description: "Check your inbox for a 6-digit code." });
+      toast({
+        title: "Code sent!",
+        description: "Check your inbox for a 6-digit code.",
+      });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Sign up failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Sign up failed",
+        description: error.message,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -75,17 +91,20 @@ const Auth = () => {
       const { error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
-        type: "email",
+        type: "signup", // must be "signup" when verifying after supabase.auth.signUp()
       });
       if (error) throw error;
-      toast({ title: "Account verified!", description: "Welcome to Tiffany's Delight!" });
-      setOtpSent(false);
-      setMode('login');
-      setEmail("");
-      setPassword("");
-      setName("");
+      toast({
+        title: "Account verified!",
+        description: "Welcome to Tiffany's Delight!",
+      });
+      navigate("/");
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Verification failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Verification failed",
+        description: error.message,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -94,42 +113,60 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-pink-50 p-4">
       <div className="flex w-full max-w-3xl h-[600px] bg-white rounded-2xl shadow-lg overflow-hidden border border-pink-100">
-
         {/* Left: Form */}
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
-
-          {/* Dynamic heading */}
           <div className="mb-8">
-            <span className="inline-block mb-2 text-pink-400 font-bold text-lg">🍰 Tiffany's Delight</span>
-            {mode === 'login' ? (
+            <span className="inline-block mb-2 text-pink-400 font-bold text-lg">
+              🍰 Tiffany's Delight
+            </span>
+            {mode === "login" ? (
               <>
-                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Hi,<br />Welcome Back</h1>
-                <p className="text-gray-500">Hey, welcome back to your special place</p>
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+                  Hi,
+                  <br />
+                  Welcome Back
+                </h1>
+                <p className="text-gray-500">
+                  Hey, welcome back to your special place
+                </p>
               </>
             ) : otpSent ? (
               <>
-                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Check your<br />inbox!</h1>
-                <p className="text-gray-500">We sent a 6-digit code to your email</p>
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+                  Check your
+                  <br />
+                  inbox!
+                </h1>
+                <p className="text-gray-500">
+                  We sent a 6-digit code to your email
+                </p>
               </>
             ) : (
               <>
-                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Join the<br />Sweetness!</h1>
-                <p className="text-gray-500">Create your account and treat yourself</p>
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+                  Join the
+                  <br />
+                  Sweetness!
+                </h1>
+                <p className="text-gray-500">
+                  Create your account and treat yourself
+                </p>
               </>
             )}
           </div>
 
-          {/* Forms */}
           {otpSent ? (
             <form onSubmit={handleVerifyOtp} className="space-y-5">
               <div>
-                <Label htmlFor="otp" className="text-gray-700 font-medium">Enter the 6-digit code sent to your email</Label>
+                <Label htmlFor="otp" className="text-gray-700 font-medium">
+                  Enter the 6-digit code sent to your email
+                </Label>
                 <Input
                   id="otp"
                   type="text"
                   placeholder="123456"
                   value={otp}
-                  onChange={e => setOtp(e.target.value)}
+                  onChange={(e) => setOtp(e.target.value)}
                   required
                   className="mt-2 h-11 rounded-lg border-gray-300"
                   maxLength={6}
@@ -143,28 +180,32 @@ const Auth = () => {
                 {isLoading ? "Verifying..." : "Verify & Sign Up"}
               </Button>
             </form>
-          ) : mode === 'login' ? (
+          ) : mode === "login" ? (
             <form onSubmit={handleSignIn} className="space-y-5">
               <div>
-                <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
+                <Label htmlFor="email" className="text-gray-700 font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@email.com"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
+                <Label htmlFor="password" className="text-gray-700 font-medium">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   className="mt-2 h-11 rounded-lg border-gray-300"
                 />
@@ -174,12 +215,14 @@ const Auth = () => {
                   <input
                     type="checkbox"
                     checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                     className="accent-pink-400"
                   />
                   Remember me
                 </label>
-                <button type="button" className="text-pink-400 hover:underline">Forgot Password?</button>
+                <button type="button" className="text-pink-400 hover:underline">
+                  Forgot Password?
+                </button>
               </div>
               <Button
                 type="submit"
@@ -192,37 +235,43 @@ const Auth = () => {
           ) : (
             <form onSubmit={handleSignUp} className="space-y-5">
               <div>
-                <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
+                <Label htmlFor="name" className="text-gray-700 font-medium">
+                  Full Name
+                </Label>
                 <Input
                   id="name"
                   type="text"
                   placeholder="Your name"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
+                <Label htmlFor="email" className="text-gray-700 font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@email.com"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
+                <Label htmlFor="password" className="text-gray-700 font-medium">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   className="mt-2 h-11 rounded-lg border-gray-300"
                 />
@@ -237,41 +286,53 @@ const Auth = () => {
             </form>
           )}
 
-          {/* ✅ Bottom link — shows Go Back only during OTP */}
           <div className="mt-8 text-center text-sm text-gray-500">
             {otpSent ? (
-<button
-  type="button"
-  onClick={() => setOtpSent(false)}
-          className="flex items-center gap-1 mx-auto text-pink-400 hover:text-pink-500 transition-colors group"
-                >
-                <span className="text-lg group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <button
+                type="button"
+                onClick={() => setOtpSent(false)}
+                className="flex items-center gap-1 mx-auto text-pink-400 hover:text-pink-500 transition-colors group"
+              >
+                <span className="text-lg group-hover:-translate-x-1 transition-transform duration-200">
+                  ←
+                </span>
                 <span className="font-medium">Back to Sign Up</span>
-            </button>
-            ) : mode === 'login' ? (
-              <>Don't have an account?{' '}
+              </button>
+            ) : mode === "login" ? (
+              <>
+                Don't have an account?{" "}
                 <button
                   type="button"
                   className="text-pink-400 font-bold hover:underline"
-                  onClick={() => { setMode('signup'); setEmail(""); setPassword(""); setName(""); }}
+                  onClick={() => {
+                    setMode("signup");
+                    setEmail("");
+                    setPassword("");
+                    setName("");
+                  }}
                 >
                   Sign Up
                 </button>
               </>
             ) : (
-              <>Already have an account?{' '}
+              <>
+                Already have an account?{" "}
                 <button
                   type="button"
                   className="text-pink-400 font-bold hover:underline"
-                  onClick={() => { setMode('login'); setEmail(""); setPassword(""); setName(""); }}
+                  onClick={() => {
+                    setMode("login");
+                    setEmail("");
+                    setPassword("");
+                    setName("");
+                  }}
                 >
                   Sign In
                 </button>
               </>
             )}
           </div>
-
-        </div>{/* ✅ End of Left Form div */}
+        </div>
 
         {/* Right: Slideshow */}
         <div className="hidden md:block w-1/2 bg-pink-100 relative overflow-hidden">
@@ -290,13 +351,12 @@ const Auth = () => {
                 key={index}
                 onClick={() => setCurrentImg(index)}
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  index === currentImg ? 'bg-white w-4' : 'bg-white/50 w-2'
+                  index === currentImg ? "bg-white w-4" : "bg-white/50 w-2"
                 }`}
               />
             ))}
           </div>
         </div>
-
       </div>
     </div>
   );

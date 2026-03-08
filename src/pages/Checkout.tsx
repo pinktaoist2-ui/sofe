@@ -274,7 +274,7 @@ const Checkout = () => {
         .insert({
           user_id: session.user.id,
           total_amount: totalAmount,
-          delivery_address: deliveryAddress,
+          address: deliveryAddress, // ✅ fixed: was delivery_address
           phone: formData.get("phone") as string,
           notes: formData.get("notes") as string,
           payment_method: paymentMethodValue,
@@ -293,7 +293,7 @@ const Checkout = () => {
           order_id: order.id,
           product_id: item.product.id,
           quantity: item.quantity,
-          price: item.product.price,
+          unit_price: item.product.price,
         }))
       );
       if (itemsError) throw itemsError;
