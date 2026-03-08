@@ -5,6 +5,7 @@ import { ShoppingCart, LogOut, User, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { AlertBell } from "@/pages/Staff";
 import logo from "@/assets/tiffany.png";
 
 interface NavbarProps {

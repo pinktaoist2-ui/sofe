@@ -104,7 +104,7 @@ const getDateRange = (filter: TimeFilter): { start: Date; end: Date } => {
   return { start, end };
 };
 
-const AnalyticsTab = () => {
+export const AnalyticsTab = () => {
   const [filter, setFilter] = useState<TimeFilter>("This Month");
   const [orders, setOrders] = useState<any[]>([]);
   const [orderItems, setOrderItems] = useState<any[]>([]);
@@ -382,7 +382,7 @@ const AnalyticsTab = () => {
 // ─── ProductsTab Component ────────────────────────────────────────────────────
 const emptyForm = { name: "", description: "", price: "", image_url: "", stock_quantity: "", expire_at: "" };
 
-const ProductsTab = () => {
+export const ProductsTab = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -559,7 +559,7 @@ const ProductsTab = () => {
 };
 
 // ─── InventoryTab ─────────────────────────────────────────────────────────────
-const InventoryTab = () => {
+export const InventoryTab = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ stock_quantity: "", low_stock_threshold: "", expire_at: "" });
@@ -653,7 +653,7 @@ interface Order {
   order_items: Array<{ quantity: number; price: number; products: { name: string; }; }>;
 }
 
-const OrdersTab = () => {
+export const OrdersTab = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const { toast } = useToast();
 
@@ -1208,7 +1208,7 @@ const StarRating = ({ rating }: { rating: number }) => (
   </div>
 );
 
-const ReviewsTab = () => {
+export const ReviewsTab = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "hidden">("pending");
   const [replyingId, setReplyingId] = useState<string | null>(null);

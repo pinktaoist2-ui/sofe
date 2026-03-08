@@ -31,30 +31,42 @@ const Auth = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // ── Shared: check role and redirect accordingly ──
+  const redirectByRole = async (userId: string) => {
+    const { data: adminRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin" as any)
+      .single();
+    if (adminRole) { navigate("/admin"); return; }
+
+    const { data: staffRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "staff" as any)
+      .single();
+    if (staffRole) { navigate("/staff"); return; }
+
+    navigate("/");
+  };
+
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast({ title: "Welcome!", description: "Signed in successfully." });
-      navigate("/");
+      await redirectByRole(data.user.id);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Sign in failed",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Sign in failed", description: error.message });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fixed: use signUp (with password) instead of signInWithOtp
-  // so the user has a password set and can log in with signInWithPassword
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -69,16 +81,9 @@ const Auth = () => {
       });
       if (error) throw error;
       setOtpSent(true);
-      toast({
-        title: "Code sent!",
-        description: "Check your inbox for a 6-digit code.",
-      });
+      toast({ title: "Code sent!", description: "Check your inbox for a 6-digit code." });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Sign up failed",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Sign up failed", description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -88,23 +93,16 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
-        type: "signup", // must be "signup" when verifying after supabase.auth.signUp()
+        type: "signup",
       });
       if (error) throw error;
-      toast({
-        title: "Account verified!",
-        description: "Welcome to Tiffany's Delight!",
-      });
-      navigate("/");
+      toast({ title: "Account verified!", description: "Welcome to Tiffany's Delight!" });
+      await redirectByRole(data.user!.id);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Verification failed",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Verification failed", description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -122,35 +120,23 @@ const Auth = () => {
             {mode === "login" ? (
               <>
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-                  Hi,
-                  <br />
-                  Welcome Back
+                  Hi,<br />Welcome Back
                 </h1>
-                <p className="text-gray-500">
-                  Hey, welcome back to your special place
-                </p>
+                <p className="text-gray-500">Hey, welcome back to your special place</p>
               </>
             ) : otpSent ? (
               <>
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-                  Check your
-                  <br />
-                  inbox!
+                  Check your<br />inbox!
                 </h1>
-                <p className="text-gray-500">
-                  We sent a 6-digit code to your email
-                </p>
+                <p className="text-gray-500">We sent a 6-digit code to your email</p>
               </>
             ) : (
               <>
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-                  Join the
-                  <br />
-                  Sweetness!
+                  Join the<br />Sweetness!
                 </h1>
-                <p className="text-gray-500">
-                  Create your account and treat yourself
-                </p>
+                <p className="text-gray-500">Create your account and treat yourself</p>
               </>
             )}
           </div>
@@ -162,14 +148,9 @@ const Auth = () => {
                   Enter the 6-digit code sent to your email
                 </Label>
                 <Input
-                  id="otp"
-                  type="text"
-                  placeholder="123456"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  required
-                  className="mt-2 h-11 rounded-lg border-gray-300"
-                  maxLength={6}
+                  id="otp" type="text" placeholder="123456"
+                  value={otp} onChange={(e) => setOtp(e.target.value)}
+                  required className="mt-2 h-11 rounded-lg border-gray-300" maxLength={6}
                 />
               </div>
               <Button
@@ -183,38 +164,25 @@ const Auth = () => {
           ) : mode === "login" ? (
             <form onSubmit={handleSignIn} className="space-y-5">
               <div>
-                <Label htmlFor="email" className="text-gray-700 font-medium">
-                  Email
-                </Label>
+                <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="mt-2 h-11 rounded-lg border-gray-300"
+                  id="email" type="email" placeholder="you@email.com"
+                  value={email} onChange={(e) => setEmail(e.target.value)}
+                  required className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-gray-700 font-medium">
-                  Password
-                </Label>
+                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
                 <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="mt-2 h-11 rounded-lg border-gray-300"
+                  id="password" type="password" placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  required className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
-                    type="checkbox"
-                    checked={rememberMe}
+                    type="checkbox" checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="accent-pink-400"
                   />
@@ -235,45 +203,27 @@ const Auth = () => {
           ) : (
             <form onSubmit={handleSignUp} className="space-y-5">
               <div>
-                <Label htmlFor="name" className="text-gray-700 font-medium">
-                  Full Name
-                </Label>
+                <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
                 <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="mt-2 h-11 rounded-lg border-gray-300"
+                  id="name" type="text" placeholder="Your name"
+                  value={name} onChange={(e) => setName(e.target.value)}
+                  required className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="email" className="text-gray-700 font-medium">
-                  Email
-                </Label>
+                <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="mt-2 h-11 rounded-lg border-gray-300"
+                  id="email" type="email" placeholder="you@email.com"
+                  value={email} onChange={(e) => setEmail(e.target.value)}
+                  required className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-gray-700 font-medium">
-                  Password
-                </Label>
+                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
                 <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="mt-2 h-11 rounded-lg border-gray-300"
+                  id="password" type="password" placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  required className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
               <Button
@@ -289,27 +239,18 @@ const Auth = () => {
           <div className="mt-8 text-center text-sm text-gray-500">
             {otpSent ? (
               <button
-                type="button"
-                onClick={() => setOtpSent(false)}
+                type="button" onClick={() => setOtpSent(false)}
                 className="flex items-center gap-1 mx-auto text-pink-400 hover:text-pink-500 transition-colors group"
               >
-                <span className="text-lg group-hover:-translate-x-1 transition-transform duration-200">
-                  ←
-                </span>
+                <span className="text-lg group-hover:-translate-x-1 transition-transform duration-200">←</span>
                 <span className="font-medium">Back to Sign Up</span>
               </button>
             ) : mode === "login" ? (
               <>
                 Don't have an account?{" "}
                 <button
-                  type="button"
-                  className="text-pink-400 font-bold hover:underline"
-                  onClick={() => {
-                    setMode("signup");
-                    setEmail("");
-                    setPassword("");
-                    setName("");
-                  }}
+                  type="button" className="text-pink-400 font-bold hover:underline"
+                  onClick={() => { setMode("signup"); setEmail(""); setPassword(""); setName(""); }}
                 >
                   Sign Up
                 </button>
@@ -318,14 +259,8 @@ const Auth = () => {
               <>
                 Already have an account?{" "}
                 <button
-                  type="button"
-                  className="text-pink-400 font-bold hover:underline"
-                  onClick={() => {
-                    setMode("login");
-                    setEmail("");
-                    setPassword("");
-                    setName("");
-                  }}
+                  type="button" className="text-pink-400 font-bold hover:underline"
+                  onClick={() => { setMode("login"); setEmail(""); setPassword(""); setName(""); }}
                 >
                   Sign In
                 </button>
@@ -338,9 +273,7 @@ const Auth = () => {
         <div className="hidden md:block w-1/2 bg-pink-100 relative overflow-hidden">
           {images.map((img, index) => (
             <img
-              key={index}
-              src={img}
-              alt={`Bakery ${index + 1}`}
+              key={index} src={img} alt={`Bakery ${index + 1}`}
               className="absolute inset-0 object-cover w-full h-full transition-opacity duration-1000"
               style={{ opacity: index === currentImg ? 1 : 0 }}
             />
@@ -348,8 +281,7 @@ const Auth = () => {
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {images.map((_, index) => (
               <button
-                key={index}
-                onClick={() => setCurrentImg(index)}
+                key={index} onClick={() => setCurrentImg(index)}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   index === currentImg ? "bg-white w-4" : "bg-white/50 w-2"
                 }`}
