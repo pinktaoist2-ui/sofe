@@ -756,7 +756,7 @@ const PromosTab = () => {
     if (data && data.length > 0) {
       const counts: Record<string, number> = {};
       await Promise.all(data.map(async (p) => {
-        const { count } = await supabase
+        const { count } = await (supabase as any)
           .from("promo_code_uses").select("id", { count: "exact", head: true })
           .eq("promo_code_id", p.id);
         counts[p.id] = count || 0;
