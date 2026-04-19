@@ -747,7 +747,7 @@ const PromosTab = () => {
   useEffect(() => { fetchPromos(); }, []);
 
   const fetchPromos = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("promo_codes").select("*").order("created_at", { ascending: false });
     if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
     setPromos(data || []);
