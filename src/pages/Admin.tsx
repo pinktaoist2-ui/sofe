@@ -808,7 +808,7 @@ const PromosTab = () => {
       if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
       toast({ title: "✅ Promo updated!" });
     } else {
-      const { error } = await supabase.from("promo_codes").insert([payload]);
+      const { error } = await (supabase as any).from("promo_codes").insert([payload]);
       if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
       toast({ title: "🎉 Promo code created!" });
     }
