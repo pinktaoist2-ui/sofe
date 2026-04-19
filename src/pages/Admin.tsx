@@ -816,7 +816,7 @@ const PromosTab = () => {
   };
 
   const toggleActive = async (id: string, current: boolean) => {
-    const { error } = await supabase.from("promo_codes").update({ is_active: !current }).eq("id", id);
+    const { error } = await (supabase as any).from("promo_codes").update({ is_active: !current }).eq("id", id);
     if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
     toast({ title: current ? "Promo deactivated" : "✅ Promo activated!" });
     fetchPromos();
