@@ -747,7 +747,7 @@ const PromosTab = () => {
   useEffect(() => { fetchPromos(); }, []);
 
   const fetchPromos = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("promo_codes").select("*").order("created_at", { ascending: false });
     if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
     setPromos(data || []);
@@ -756,7 +756,7 @@ const PromosTab = () => {
     if (data && data.length > 0) {
       const counts: Record<string, number> = {};
       await Promise.all(data.map(async (p) => {
-        const { count } = await supabase
+        const { count } = await (supabase as any)
           .from("promo_code_uses").select("id", { count: "exact", head: true })
           .eq("promo_code_id", p.id);
         counts[p.id] = count || 0;
@@ -804,11 +804,11 @@ const PromosTab = () => {
     }
 
     if (editingId) {
-      const { error } = await supabase.from("promo_codes").update(payload).eq("id", editingId);
+      const { error } = await (supabase as any).from("promo_codes").update(payload).eq("id", editingId);
       if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
       toast({ title: "✅ Promo updated!" });
     } else {
-      const { error } = await supabase.from("promo_codes").insert([payload]);
+      const { error } = await (supabase as any).from("promo_codes").insert([payload]);
       if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
       toast({ title: "🎉 Promo code created!" });
     }
@@ -816,7 +816,7 @@ const PromosTab = () => {
   };
 
   const toggleActive = async (id: string, current: boolean) => {
-    const { error } = await supabase.from("promo_codes").update({ is_active: !current }).eq("id", id);
+    const { error } = await (supabase as any).from("promo_codes").update({ is_active: !current }).eq("id", id);
     if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
     toast({ title: current ? "Promo deactivated" : "✅ Promo activated!" });
     fetchPromos();
@@ -824,7 +824,7 @@ const PromosTab = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this promo code?")) return;
-    const { error } = await supabase.from("promo_codes").delete().eq("id", id);
+    const { error } = await (supabase as any).from("promo_codes").delete().eq("id", id);
     if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
     toast({ title: "Promo deleted" }); fetchPromos();
   };
