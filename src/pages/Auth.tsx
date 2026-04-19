@@ -14,9 +14,7 @@ const Auth = () => {
   const { toast } = useToast();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
@@ -31,59 +29,37 @@ const Auth = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Shared: check role and redirect accordingly ──
   const redirectByRole = async (userId: string) => {
     const { data: adminRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin" as any)
-      .single();
+      .from("user_roles").select("role")
+      .eq("user_id", userId).eq("role", "admin" as any).single();
     if (adminRole) { navigate("/admin"); return; }
 
     const { data: staffRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "staff" as any)
-      .single();
+      .from("user_roles").select("role")
+      .eq("user_id", userId).eq("role", "staff" as any).single();
     if (staffRole) { navigate("/staff"); return; }
 
     navigate("/");
   };
 
-  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Send OTP for both sign in and sign up
+  const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      toast({ title: "Welcome!", description: "Signed in successfully." });
-      await redirectByRole(data.user.id);
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Sign in failed", description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
-          data: { full_name: name },
-          emailRedirectTo: undefined,
+          shouldCreateUser: mode === "signup",
+          data: mode === "signup" ? { full_name: name } : undefined,
         },
       });
       if (error) throw error;
       setOtpSent(true);
       toast({ title: "Code sent!", description: "Check your inbox for a 6-digit code." });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Sign up failed", description: error.message });
+      toast({ variant: "destructive", title: "Failed to send code", description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -96,10 +72,10 @@ const Auth = () => {
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
-        type: "signup",
+        type: "email",
       });
       if (error) throw error;
-      toast({ title: "Account verified!", description: "Welcome to Tiffany's Delight!" });
+      toast({ title: "Welcome!", description: "Signed in successfully." });
       await redirectByRole(data.user!.id);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Verification failed", description: error.message });
@@ -117,26 +93,26 @@ const Auth = () => {
             <span className="inline-block mb-2 text-pink-400 font-bold text-lg">
               🍰 Tiffany's Delight
             </span>
-            {mode === "login" ? (
-              <>
-                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-                  Hi,<br />Welcome Back
-                </h1>
-                <p className="text-gray-500">Hey, welcome back to your special place</p>
-              </>
-            ) : otpSent ? (
+            {otpSent ? (
               <>
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
                   Check your<br />inbox!
                 </h1>
-                <p className="text-gray-500">We sent a 6-digit code to your email</p>
+                <p className="text-gray-500">We sent a 6-digit code to {email}</p>
+              </>
+            ) : mode === "login" ? (
+              <>
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+                  Hi,<br />Welcome Back
+                </h1>
+                <p className="text-gray-500">We'll email you a one-time code to sign in</p>
               </>
             ) : (
               <>
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
                   Join the<br />Sweetness!
                 </h1>
-                <p className="text-gray-500">Create your account and treat yourself</p>
+                <p className="text-gray-500">Create your account with a one-time code</p>
               </>
             )}
           </div>
@@ -145,12 +121,12 @@ const Auth = () => {
             <form onSubmit={handleVerifyOtp} className="space-y-5">
               <div>
                 <Label htmlFor="otp" className="text-gray-700 font-medium">
-                  Enter the 6-digit code sent to your email
+                  Enter the 6-digit code
                 </Label>
                 <Input
-                  id="otp" type="text" placeholder="123456"
-                  value={otp} onChange={(e) => setOtp(e.target.value)}
-                  required className="mt-2 h-11 rounded-lg border-gray-300" maxLength={6}
+                  id="otp" type="text" inputMode="numeric" placeholder="123456"
+                  value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  required className="mt-2 h-11 rounded-lg border-gray-300 tracking-widest text-center text-lg" maxLength={6}
                 />
               </div>
               <Button
@@ -158,58 +134,21 @@ const Auth = () => {
                 className="w-full h-11 bg-pink-400 hover:bg-pink-500 text-white font-bold rounded-lg"
                 disabled={isLoading || otp.length !== 6}
               >
-                {isLoading ? "Verifying..." : "Verify & Sign Up"}
-              </Button>
-            </form>
-          ) : mode === "login" ? (
-            <form onSubmit={handleSignIn} className="space-y-5">
-              <div>
-                <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
-                <Input
-                  id="email" type="email" placeholder="you@email.com"
-                  value={email} onChange={(e) => setEmail(e.target.value)}
-                  required className="mt-2 h-11 rounded-lg border-gray-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
-                <Input
-                  id="password" type="password" placeholder="••••••••"
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                  required className="mt-2 h-11 rounded-lg border-gray-300"
-                />
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox" checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="accent-pink-400"
-                  />
-                  Remember me
-                </label>
-                <button type="button" className="text-pink-400 hover:underline">
-                  Forgot Password?
-                </button>
-              </div>
-              <Button
-                type="submit"
-                className="w-full h-11 bg-pink-400 hover:bg-pink-500 text-white font-bold rounded-lg"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? "Verifying..." : "Verify & Continue"}
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleSignUp} className="space-y-5">
-              <div>
-                <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
-                <Input
-                  id="name" type="text" placeholder="Your name"
-                  value={name} onChange={(e) => setName(e.target.value)}
-                  required className="mt-2 h-11 rounded-lg border-gray-300"
-                />
-              </div>
+            <form onSubmit={handleSendOtp} className="space-y-5">
+              {mode === "signup" && (
+                <div>
+                  <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
+                  <Input
+                    id="name" type="text" placeholder="Your name"
+                    value={name} onChange={(e) => setName(e.target.value)}
+                    required className="mt-2 h-11 rounded-lg border-gray-300"
+                  />
+                </div>
+              )}
               <div>
                 <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
                 <Input
@@ -218,20 +157,12 @@ const Auth = () => {
                   required className="mt-2 h-11 rounded-lg border-gray-300"
                 />
               </div>
-              <div>
-                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
-                <Input
-                  id="password" type="password" placeholder="••••••••"
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                  required className="mt-2 h-11 rounded-lg border-gray-300"
-                />
-              </div>
               <Button
                 type="submit"
                 className="w-full h-11 bg-pink-400 hover:bg-pink-500 text-white font-bold rounded-lg"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing up..." : "Sign Up"}
+                {isLoading ? "Sending code..." : mode === "login" ? "Send Sign-In Code" : "Send Sign-Up Code"}
               </Button>
             </form>
           )}
@@ -239,18 +170,18 @@ const Auth = () => {
           <div className="mt-8 text-center text-sm text-gray-500">
             {otpSent ? (
               <button
-                type="button" onClick={() => setOtpSent(false)}
+                type="button" onClick={() => { setOtpSent(false); setOtp(""); }}
                 className="flex items-center gap-1 mx-auto text-pink-400 hover:text-pink-500 transition-colors group"
               >
                 <span className="text-lg group-hover:-translate-x-1 transition-transform duration-200">←</span>
-                <span className="font-medium">Back to Sign Up</span>
+                <span className="font-medium">Use a different email</span>
               </button>
             ) : mode === "login" ? (
               <>
                 Don't have an account?{" "}
                 <button
                   type="button" className="text-pink-400 font-bold hover:underline"
-                  onClick={() => { setMode("signup"); setEmail(""); setPassword(""); setName(""); }}
+                  onClick={() => { setMode("signup"); setEmail(""); setName(""); }}
                 >
                   Sign Up
                 </button>
@@ -260,7 +191,7 @@ const Auth = () => {
                 Already have an account?{" "}
                 <button
                   type="button" className="text-pink-400 font-bold hover:underline"
-                  onClick={() => { setMode("login"); setEmail(""); setPassword(""); setName(""); }}
+                  onClick={() => { setMode("login"); setEmail(""); setName(""); }}
                 >
                   Sign In
                 </button>
