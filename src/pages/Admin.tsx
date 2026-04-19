@@ -824,7 +824,7 @@ const PromosTab = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this promo code?")) return;
-    const { error } = await supabase.from("promo_codes").delete().eq("id", id);
+    const { error } = await (supabase as any).from("promo_codes").delete().eq("id", id);
     if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
     toast({ title: "Promo deleted" }); fetchPromos();
   };
