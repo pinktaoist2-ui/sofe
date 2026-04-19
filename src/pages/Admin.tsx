@@ -804,7 +804,7 @@ const PromosTab = () => {
     }
 
     if (editingId) {
-      const { error } = await supabase.from("promo_codes").update(payload).eq("id", editingId);
+      const { error } = await (supabase as any).from("promo_codes").update(payload).eq("id", editingId);
       if (error) { toast({ variant: "destructive", title: "Error", description: error.message }); return; }
       toast({ title: "✅ Promo updated!" });
     } else {
