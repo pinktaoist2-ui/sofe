@@ -6,7 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -49,6 +48,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       login_attempts: {
         Row: {
@@ -187,6 +216,7 @@ export type Database = {
       }
       products: {
         Row: {
+          category_id: string | null
           created_at: string | null
           description: string | null
           expire_at: string | null
@@ -199,6 +229,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           expire_at?: string | null
@@ -211,6 +242,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           expire_at?: string | null
@@ -222,7 +254,15 @@ export type Database = {
           stock_quantity?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -253,157 +293,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      categories: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          image_url: string | null
-          display_order: number | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          image_url?: string | null
-          display_order?: number | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          image_url?: string | null
-          display_order?: number | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      reviews: {
-        Row: {
-          id: string
-          product_id: string | null
-          user_id: string | null
-          rating: number
-          review_text: string | null
-          admin_reply: string | null
-          status: string | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          product_id?: string | null
-          user_id?: string | null
-          rating: number
-          review_text?: string | null
-          admin_reply?: string | null
-          status?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          product_id?: string | null
-          user_id?: string | null
-          rating?: number
-          review_text?: string | null
-          admin_reply?: string | null
-          status?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reviews_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      promo_codes: {
-        Row: {
-          id: string
-          code: string
-          description: string | null
-          discount_type: string
-          discount_value: number | null
-          buy_quantity: number | null
-          get_quantity: number | null
-          applies_to: string
-          applicable_ids: string[] | null
-          minimum_order: number | null
-          one_time_per_customer: boolean | null
-          expires_at: string | null
-          is_active: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          code: string
-          description?: string | null
-          discount_type: string
-          discount_value?: number | null
-          buy_quantity?: number | null
-          get_quantity?: number | null
-          applies_to?: string
-          applicable_ids?: string[] | null
-          minimum_order?: number | null
-          one_time_per_customer?: boolean | null
-          expires_at?: string | null
-          is_active?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          code?: string
-          description?: string | null
-          discount_type?: string
-          discount_value?: number | null
-          buy_quantity?: number | null
-          get_quantity?: number | null
-          applies_to?: string
-          applicable_ids?: string[] | null
-          minimum_order?: number | null
-          one_time_per_customer?: boolean | null
-          expires_at?: string | null
-          is_active?: boolean | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      promo_code_uses: {
-        Row: {
-          id: string
-          promo_code_id: string
-          user_id: string
-          used_at: string | null
-        }
-        Insert: {
-          id?: string
-          promo_code_id: string
-          user_id: string
-          used_at?: string | null
-        }
-        Update: {
-          id?: string
-          promo_code_id?: string
-          user_id?: string
-          used_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "promo_code_uses_promo_code_id_fkey"
-            columns: ["promo_code_id"]
-            isOneToOne: false
-            referencedRelation: "promo_codes"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_roles: {
         Row: {
